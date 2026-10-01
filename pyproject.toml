@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "india-xbrl-filings"
-version = "0.1.0"
+version = "0.1.1"
 description = "Discover and download Indian listed-company financial-result XBRL filings (NSE and BSE) with full provenance. Download + preserve + index only; parsing is out of scope for v1."
 readme = "README.md"
 requires-python = ">=3.10"
