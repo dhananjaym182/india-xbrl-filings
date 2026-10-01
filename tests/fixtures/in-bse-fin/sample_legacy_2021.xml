@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Fixture: minimal in-bse-fin (legacy "Financial Results") XBRL 2.1 instance.
+  Synthesized for tests; structure mirrors real legacy filings
+  (hyphenated in-bse-fin prefix, OneD quarter + FourD YTD contexts, ~112
+  facts in real files).
+-->
+<xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            xmlns:link="http://www.xbrl.org/2003/linkbase"
+            xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+            xmlns:in-bse-fin="http://www.bseindia.com/xbrl/fin"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <link:schemaRef xlink:type="simple" xlink:href="in-bse-fin-2021-03-31.xsd"/>
+  <link:linkbaseRef xlink:type="simple" xlink:href="in-bse-fin-2021-03-31_lab.xml"/>
+
+  <xbrli:context id="OneD">
+    <xbrli:entity>
+      <xbrli:identifier scheme="http://www.bseindia.com">INE002A08JTW</xbrli:identifier>
+    </xbrli:entity>
+    <xbrli:period>
+      <xbrli:startDate>2021-01-01</xbrli:startDate>
+      <xbrli:endDate>2021-03-31</xbrli:endDate>
+    </xbrli:period>
+  </xbrli:context>
+  <xbrli:context id="FourD">
+    <xbrli:entity>
+      <xbrli:identifier scheme="http://www.bseindia.com">INE002A08JTW</xbrli:identifier>
+    </xbrli:entity>
+    <xbrli:period>
+      <xbrli:startDate>2020-04-01</xbrli:startDate>
+      <xbrli:endDate>2021-03-31</xbrli:endDate>
+    </xbrli:period>
+  </xbrli:context>
+  <xbrli:context id="N1D">
+    <xbrli:entity>
+      <xbrli:identifier scheme="http://www.bseindia.com">INE002A08JTW</xbrli:identifier>
+    </xbrli:entity>
+    <xbrli:period>
+      <xbrli:instant>2021-03-31</xbrli:instant>
+    </xbrli:period>
+  </xbrli:context>
+  <xbrli:unit id="INR">
+    <xbrli:measure>iso4217:INR</xbrli:measure>
+  </xbrli:unit>
+
+  <!-- Quarter (OneD) flows -->
+  <in-bse-fin:RevenueFromOperations contextRef="OneD" unitRef="INR" decimals="-3">25125000000</in-bse-fin:RevenueFromOperations>
+  <in-bse-fin:OtherIncome contextRef="OneD" unitRef="INR" decimals="-3">412000000</in-bse-fin:OtherIncome>
+  <in-bse-fin:ProfitLossFromContinuingOperationsBeforeTax contextRef="OneD" unitRef="INR" decimals="-3">4830000000</in-bse-fin:ProfitLossFromContinuingOperationsBeforeTax>
+  <in-bse-fin:ProfitLoss contextRef="OneD" unitRef="INR" decimals="-3">3601000000</in-bse-fin:ProfitLoss>
+  <!-- Cumulative YTD (FourD) flows -->
+  <in-bse-fin:RevenueFromOperations contextRef="FourD" unitRef="INR" decimals="-3">90226000000</in-bse-fin:RevenueFromOperations>
+  <in-bse-fin:ProfitLoss contextRef="FourD" unitRef="INR" decimals="-3">13142000000</in-bse-fin:ProfitLoss>
+  <!-- Instant (balance sheet) -->
+  <in-bse-fin:PaidUpEquityShareCapital contextRef="N1D" unitRef="INR" decimals="-3">9342195730</in-bse-fin:PaidUpEquityShareCapital>
+</xbrli:xbrl>

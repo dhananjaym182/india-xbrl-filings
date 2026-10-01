@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Fixture: minimal in-capmkt (SEBI Integrated Filing, 2025+) XBRL 2.1
+  instance. Synthesized for tests; mirrors real integrated filings
+  (~931 facts / ~144 contexts in real files; schemaRef is relative and
+  unresolved upstream).
+-->
+<xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            xmlns:link="http://www.xbrl.org/2003/linkbase"
+            xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+            xmlns:in-capmkt="http://www.sebi.gov.in/xbrl/2025-01-31"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <link:schemaRef xlink:type="simple" xlink:href="in-capmkt-ent-2026-01-31.xsd"/>
+
+  <xbrli:context id="OneD">
+    <xbrli:entity>
+      <xbrli:identifier scheme="http://www.sebi.gov.in/xbrl">INE469I01024</xbrli:identifier>
+    </xbrli:entity>
+    <xbrli:period>
+      <xbrli:startDate>2025-10-01</xbrli:startDate>
+      <xbrli:endDate>2025-12-31</xbrli:endDate>
+    </xbrli:period>
+  </xbrli:context>
+  <xbrli:context id="FourD">
+    <xbrli:entity>
+      <xbrli:identifier scheme="http://www.sebi.gov.in/xbrl">INE469I01024</xbrli:identifier>
+    </xbrli:entity>
+    <xbrli:period>
+      <xbrli:startDate>2025-04-01</xbrli:startDate>
+      <xbrli:endDate>2025-12-31</xbrli:endDate>
+    </xbrli:period>
+  </xbrli:context>
+  <xbrli:context id="N1D">
+    <xbrli:entity>
+      <xbrli:identifier scheme="http://www.sebi.gov.in/xbrl">INE469I01024</xbrli:identifier>
+    </xbrli:entity>
+    <xbrli:period>
+      <xbrli:instant>2025-12-31</xbrli:instant>
+    </xbrli:period>
+  </xbrli:context>
+  <xbrli:unit id="INR">
+    <xbrli:measure>iso4217:INR</xbrli:measure>
+  </xbrli:unit>
+
+  <!-- Quarter (OneD) -->
+  <in-capmkt:RevenueFromOperations contextRef="OneD" unitRef="INR" decimals="-3">8976300000</in-capmkt:RevenueFromOperations>
+  <in-capmkt:ProfitLoss contextRef="OneD" unitRef="INR" decimals="-3">1152400000</in-capmkt:ProfitLoss>
+  <!-- Cumulative YTD (FourD) -->
+  <in-capmkt:RevenueFromOperations contextRef="FourD" unitRef="INR" decimals="-3">27138200000</in-capmkt:RevenueFromOperations>
+  <in-capmkt:ProfitLoss contextRef="FourD" unitRef="INR" decimals="-3">3987000000</in-capmkt:ProfitLoss>
+  <!-- Instant -->
+  <in-capmkt:PaidUpEquityShareCapital contextRef="N1D" unitRef="INR" decimals="-3">5218420000</in-capmkt:PaidUpEquityShareCapital>
+</xbrli:xbrl>

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Filing data — never commit downloaded corpora
+data/
+*.jsonl
+*.zip
+# ...except committed test fixtures
+!tests/fixtures/**
+!tests/fixtures/**/*
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
