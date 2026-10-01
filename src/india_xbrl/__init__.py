@@ -4,4 +4,8 @@ Download + preserve + index only. Parsing XBRL into normalized financial
 statements is a non-goal for v1.
 """
 
-__version__ = "0.1.0"
+from __future__ import annotations
+
+from importlib.metadata import version
+
+__version__ = version("india-xbrl-filings")
