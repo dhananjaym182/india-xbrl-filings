@@ -23,6 +23,15 @@ statements is a non-goal for v1 (see [Parsing](#parsing) below).
 
 ### 1. Install
 
+From PyPI:
+
+```bash
+pip install india-xbrl-filings
+india-xbrl --version
+```
+
+From source:
+
 ```bash
 git clone https://github.com/dhananjaym182/india-xbrl-filings
 cd india-xbrl-filings
@@ -91,8 +100,6 @@ Exit code `1` on any integrity issue — CI-friendly.
 india-xbrl --source all --index --years 2026 && india-xbrl --fetch
 ```
 
-BSE's RSS feed is a fixed "latest" snapshot and suits this incremental use.
-
 ### All options
 
 | flag | meaning | default |
@@ -105,161 +112,6 @@ BSE's RSS feed is a fixed "latest" snapshot and suits this incremental use.
 | `--no-skip-standalone` | also fetch standalone when a consolidated filing exists for the same symbol+period | off |
 | `--data-dir DIR` | where `index.jsonl` / `manifest.jsonl` / `payloads/` live | `data/` |
 | `-v` | debug logging (per-request lines) | off |
-
-## BSE works — the "blocked" claim was a fingerprint artifact
-
-BSE is supported (`--source bse`). Measured 2026-10-01 against the live endpoints.
-
-**The gate is a browser-fingerprint rule, not a ban.** `api.bseindia.com` sits behind
-Akamai, which scores request headers:
-
-- naive `python-requests` default User-Agent → **403 on every path**;
-- a bare Chrome User-Agent → 403 on *some* requests and not others — the trap that
-  fooled earlier audits into "BSE is blocked";
-- the full set in `india_xbrl.transport.BSE_HEADERS` — Chrome UA **plus**
-  `Accept-Encoding` (requests always sends it; `curl` does not: an A/B
-  `curl --compressed` flips 403 → 200 on an identical URL) **plus** the `sec-ch-ua`
-  client hints, Origin/Referer and Sec-Fetch-* → **HTTP 200, reliably**.
-
-One transient 403 was observed right after a large PDF download, and a 30 s
-`ReadTimeout` mid-backfill — so **discovery GETs retry with backoff** too
-(`BseDiscoveryClient`), and fail loudly once exhausted.
-
-Full-year live result (calendar 2026): **13,946 filings discovered** (13,937
-announcement rows back across the whole year + deduped RSS items) in ~5 minutes,
-including result announcements back to 2016 for long-dead symbols.
-
-### BSE discovery endpoints
-
-Financial-result announcements — found in BSE's own SPA URL map
-(`www.bseindia.com/assets/includenew/js/chunk-*.js`):
-
-    https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w
-        ?pageno=N &strCat=Result &strPrevDate=YYYYMMDD &strScrip=
-        &strSearch=P &strToDate=YYYYMMDD &strType=C &subcategory=-1
-
-- `strCat=Result` is the category **name**; the numeric id (`7`) returns 0 rows.
-- Response: `{"Table": [rows], "Table1": [{"ROWCNT": total}]}`; ~50 rows/page; the
-  client pages until `ROWCNT` is covered, slicing the range into ≤7-day windows.
-- Windows verified **back to January 2019** — full history, no NSE-style cutoff.
-- Rows carry an `ATTACHMENTNAME` (result PDF from
-  `www.bseindia.com/xml-data/corpfiling/AttachLive/`) but **no XBRL instance link**.
-  Rows without an attachment index as `no_xbrl_link` — the same recorded outcome as
-  NSE. (Legacy `XBRLFILES/CGXBRLDataXML/ANN_*.xml` paths are dead: 404 for 2019 rows.)
-- **`AttachLive` rotates: roughly the last 60 days of attachments survive**
-  (measured 2026-10-01: a Sep 24 attachment → 200 at 2.9 MB; Aug 7 and older → 404,
-  including under `AttachHistoric`). Older filings are *discoverable* but their PDFs
-  are gone from BSE entirely. Record outcomes and move on — the fetcher does.
-- Subjects are machine-parsed for the period and carry **year typos** (live
-  examples: "Quarter Ended June 30, 3036", "Dec 31, 20925"). Implausible dates are
-  refused (`period_end=None`), never silently "corrected".
-
-Integrated-Filing (IFIndAs) instances come from a fixed "latest" RSS snapshot —
-useful for incremental sync, not backfill:
-
-    https://www.bseindia.com/Data/XML/FinancialResultsFeed.aspx   (no params)
-
-Each item links into `www.bseindia.com/XBRLFILES/IFIndasDuplicateUploadDocument/` —
-and here the ixbrl trap is **inverted** (see below): the `.html` is real iXBRL while
-the **`.xml` sibling is the plain instance** our reader accepts. The library maps
-`.html` → `.xml` for the payload and keeps the original as `ixbrl_url` provenance.
-The feed **repeats exact rows** (observed live); duplicates are dropped on the
-(symbol, instance) pair, while a changed instance for the same symbol is kept as a
-distinct filing.
-
-Verified end-to-end 2026-10-01: an RSS `.xml` instance downloaded through the same
-fetcher parses with the vendored `in-capmkt` reader — 259 facts, 11 contexts,
-**zero dropped namespaces** (`IFIndAs V2.1`, namespace dated `2026-01-31`).
-
-Verified dead ends, so you don't re-walk them: `XbrlAnnouncementCategory/w` serves
-Reg-30 announcements only; `strCat=8` (Integrated Filing id) returns 0 rows; the
-legacy result pages (`Corp_FinanceResult_ng_new`, `Integratedfinancedata`,
-`Corp_Archive_Wthxml_ng(_new)`, `Result_Arch_ng`) 302 to an error page when called
-with guessed parameters; `m.bseindia.com` serves HTML but its API paths 404.
-
-## The two taxonomies — and the 2025 cutoff
-
-| | legacy "Financial Results" | new "Integrated Filing" |
-|---|---|---|
-| endpoint | `corporates-financial-results` | `integrated-filing-results` (paginated) |
-| taxonomy | **`in-bse-fin`** (BSE-published) | **`in-capmkt`** (SEBI-published) |
-| facts / filing | ~112 | **~931** (~144 contexts) |
-| coverage | FY2015-16 onward | **2025+ ONLY** |
-
-**Row shapes (measured live 2026-10-01, both endpoints):** the two endpoints use
-different field names — legacy rows carry `seqNumber`/`toDate`/`filingDate`,
-integrated rows carry `seq_Id`/`qe_Date`/`creation_Date` — and NSE's null sentinel
-`-` leaks through even **pre-joined** into `.../xbrl/-` URLs (which 404). Classifications
-are *words*, not booleans: `"Audited"`/`"Un-Audited"`, `"Consolidated"`/`"Non-Consolidated"`,
-`"Ind-AS New"`. A boolean-only mapper silently records every row as unaudited; the
-mapper here handles both shapes and both sentinel forms.
-
-The new taxonomy is **not backwards compatible**. A parser that expects `in-capmkt`
-across history gets **zero matches before 2025** — 32/32 sampled old-format filings used
-`in-bse-fin`, 0/32 used `in-capmkt`. The `in-bse-fin` prefix **contains hyphens**; a
-naive `[A-Za-z0-9_]+` regex silently matches nothing, so prefix patterns here allow `-`.
-
-Both are plain XBRL 2.1 (not iXBRL). `in-ind-as` is claimed by a third-party library but
-was seen in **no** actual file — treated as unconfirmed, not built upon.
-
-### The `ixbrl` trap
-
-Integrated Filing records also carry an `ixbrl` field. It points at an `.html` that
-contains **zero `ix:` tags and zero XBRL facts** — a rendered table for humans. This
-library reads the `xbrl` field and never the `ixbrl` field (enforced by test), because
-downloading it wastes bandwidth and silently produces an empty parse.
-
-**BSE inverts the trap.** In BSE's Integrated Filing RSS, the `.html` *is* iXBRL
-(redirected facts and all) and the `.xml` sibling is the plain instance — both real.
-We fetch the `.xml` sibling and keep the `.html` link as provenance.
-
-## Parsing
-
-**Taxonomy resolution is broken upstream.** The `schemaRef` in each instance is
-*relative* (e.g. `in-capmkt-ent-2026-01-31.xsd`) and **neither host serves the .xsd**:
-`nsearchives.nseindia.com/corporate/xbrl/*.xsd` → 404; `sebi.gov.in/xbrl/...` → 530. A
-strict DTS-resolving parser (plain Arelle) **cannot** resolve the taxonomy from the
-instance alone.
-
-The design decision, implemented in `india_xbrl/taxonomy.py` and `india_xbrl/reader.py`:
-
-1. **Primary — side-load the official SEBI taxonomy package.** The SEBI "Integrated
-   Filing Finance (IndAS)" package is vendored at `vendor/taxonomies/in-capmkt-finance/`
-   (a valid XBRL Taxonomy Package: `META-INF/taxonomyPackage.xml`, `catalog.xml` with a
-   `rewriteURI` rule, entry point `in-capmkt-ent-2025-01-31.xsd`, publisher SEBI, plus
-   lab/cal/def/pre/ref linkbases and a tag→label XLSX), versioned by its publication date
-   `2025-01-31`. Siblings exist upstream for NBFC, Banking, General Insurance, Life
-   Insurance, and "Other than banks". This is the correct long-term path.
-2. **Fallback — namespace-agnostic reading.** Strip prefixes, match local names, keep
-   `OneD` (discrete quarter) and `FourD` (cumulative YTD) contexts **distinct** — both
-   appear in the same filing and conflating them silently doubles or halves every flow
-   value. Anything dropped (unparseable namespace prefixes, no-namespace facts) is
-   recorded in `InstanceSummary.dropped_namespaces`, never silently discarded.
-
-Point Arelle at the vendored package directory when you do adopt it (v1 ships no Arelle
-dependency); `TaxonomyRegistry` already speaks its catalog conventions.
-
-## Rate limits (measured, not guessed)
-
-Measured against `nsearchives.nseindia.com` (2026-10-01):
-
-- **0.6 s spacing → 8 of 20 fetches FAILED.**
-- **6 s spacing × escalating per-attempt backoff → every retry succeeded.**
-- Throughput observed: **~0.31 filings/s at 12 concurrent workers.** NSE holds
-  connections ~30 s, so throughput scales with **concurrency, not with a shorter delay**.
-
-Default: **12 workers**, 6 s per-worker spacing, backoff `base × (attempt + 1)` plus
-random jitter (without the jitter, concurrent workers retry in lockstep and re-trigger
-the rate limit together). **Raising concurrency is a politeness decision, not a
-performance one.** Forcing HTTP/1.1 to the archives host is required — HTTP/2 fails with
-`INTERNAL_ERROR` — and is pinned in `india_xbrl/transport.py`.
-
-## `no_xbrl_link` is expected
-
-A large fraction of companies genuinely have no XBRL for a period: in the reference
-corpus **~33%** of discovery rows (`9,487 of 28,841`) had no XBRL link — small and
-pre-Ind-AS filers. This is **not an error**; it is the correct answer for a company that
-does not file XBRL. It is recorded as its own `fetch_status` and never retried.
 
 ## Legal note — read this
 
@@ -279,16 +131,6 @@ does not file XBRL. It is recorded as its own `fetch_status` and never retried.
 >
 > If you need production-grade market data, license it from NSE, BSE, or an
 > authorized vendor. Nothing here is investment advice.
-
-## What we deliberately do not do
-
-- No cookie/session layer: NSE's discovery APIs return HTTP 200 with only a browser
-  User-Agent, and BSE needs the full header fingerprint (see above) but no cookies on
-  either host. A cookie layer is unnecessary complexity that rots.
-- No HTML scraping, no browser automation: the JSON APIs are stable, the HTML is
-  client-rendered.
-- No abandoned dependencies (`nsepy`, `investpy`, `python-xbrl`, `xbrl-parser`, …).
-- No silent namespace-dropping: whatever the reader drops is recorded on the summary.
 
 ## Development
 
