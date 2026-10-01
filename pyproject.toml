@@ -47,6 +47,12 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/india_xbrl"]
 
+# Ship the vendored SEBI taxonomy package in wheels too, under the location
+# taxonomy._vendored_roots() checks (india_xbrl/_vendor mirrors vendor/taxonomies).
+# Without this, a wheel-installed copy could not resolve schema packages.
+[tool.hatch.build.targets.wheel.force-include]
+"vendor/taxonomies" = "india_xbrl/_vendor"
+
 [tool.hatch.build.targets.sdist]
 # Ship the vendored SEBI taxonomy package in sdists: it is content, not a
 # build artifact, and the library cannot resolve schemas without it.

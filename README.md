@@ -299,6 +299,26 @@ pytest                # offline; mocked transport only
 mypy                  # strict
 ```
 
+### Publishing to PyPI
+
+CI handles it via [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/)
+(OIDC — no tokens anywhere):
+
+1. **One-time**: on pypi.org → Account settings → Publishing, register a pending
+   publisher: project `india-xbrl-filings`, owner `dhananjaym182`, repo
+   `india-xbrl-filings`, workflow `release.yml`, environment `pypi`.
+2. Bump `version` in `pyproject.toml`, commit, then:
+
+   ```bash
+   git tag v0.1.0 && git push origin main v0.1.0
+   ```
+
+   The `release` workflow builds, `twine check`s, smoke-tests the wheel in a
+   clean venv, and publishes. Artifacts are also uploaded as workflow artifacts.
+
+Locally, the same artifacts are reproducible with `python -m build` +
+`twine check dist/*`.
+
 Acceptance coverage (all offline): resume across interrupt; one-byte corruption caught
 by `--audit`; both fixture taxonomies parse with `OneD`/`FourD` distinct; `ixbrl` never
 fetched; `no_xbrl_link` never retried; pacing/backoff asserted via fake clock; full
